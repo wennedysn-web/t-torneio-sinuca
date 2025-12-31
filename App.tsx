@@ -1,10 +1,10 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { AppView, Participant, Entry, Match } from './types';
-import { Trophy, Users, Swords, LogIn, LogOut, LayoutDashboard, Search, Plus, Trash2, Edit2, CheckCircle2, ChevronRight, AlertCircle } from 'lucide-react';
-import AdminParticipants from './components/AdminParticipants';
-import AdminMatches from './components/AdminMatches';
-import VisitorView from './components/VisitorView';
+import React, { useState, useEffect } from 'react';
+import { AppView, Participant, Entry, Match } from './types.ts';
+import { Trophy, Users, Swords, LogIn, LogOut, LayoutDashboard, Plus, Trash2, ChevronRight } from 'lucide-react';
+import AdminParticipants from './components/AdminParticipants.tsx';
+import AdminMatches from './components/AdminMatches.tsx';
+import VisitorView from './components/VisitorView.tsx';
 import { GoogleGenAI } from "@google/genai";
 
 const App: React.FC = () => {
@@ -40,8 +40,8 @@ const App: React.FC = () => {
   // Fetch AI Motto for flair
   useEffect(() => {
     const fetchMotto = async () => {
+      if (!process.env.API_KEY) return;
       try {
-        // Correct initialization of GoogleGenAI using environment variable directly
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
@@ -57,7 +57,7 @@ const App: React.FC = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'admin') { // Updated password check
+    if (password === 'admin') {
       setIsAdmin(true);
       setView('admin-participants');
     } else {
