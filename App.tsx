@@ -93,7 +93,7 @@ const App: React.FC = () => {
     if (error) console.error("Erro na sincronização:", error.message);
   }, []);
 
-  // Wrappers de atualização garantindo integridade
+  // Wrapper principal de atualização
   const updateData = (updater: (prev: TournamentData) => TournamentData) => {
     setData(prev => {
       const next = updater(prev);
@@ -102,32 +102,59 @@ const App: React.FC = () => {
     });
   };
 
-  const setParticipants = (val: React.SetStateAction<Participant[]>) => {
+  // Funções administrativas delegadas
+  const handleRegisterParticipant = (participant: Participant, newEntries: Entry[]) => {
     updateData(prev => ({
       ...prev,
-      participants: typeof val === 'function' ? val(prev.participants) : val
+      participants: [...prev.participants, participant],
+      entries: [...prev.entries, ...newEntries]
     }));
   };
 
-  const setEntries = (val: React.SetStateAction<Entry[]>) => {
+  const handleRemoveParticipant = (id: string) => {
     updateData(prev => ({
       ...prev,
-      entries: typeof val === 'function' ? val(prev.entries) : val
+      participants: prev.participants.filter(p => p.id !== id),
+      entries: prev.entries.filter(e => e.participantId !== id)
     }));
   };
 
-  const setMatches = (val: React.SetStateAction<Match[]>) => {
+  const handleEditParticipant = (id: string, newName: string) => {
     updateData(prev => ({
       ...prev,
-      matches: typeof val === 'function' ? val(prev.matches) : val
+      participants: prev.participants.map(p => p.id === id ? { ...p, name: newName } : p),
+      entries: prev.entries.map(e => e.participantId === id ? { ...e, participantName: newName } : e)
     }));
   };
 
-  const setCurrentRound = (val: React.SetStateAction<number>) => {
+  const handleGenerateTestData = () => {
+    const names = ["Baianinho", "Bruxo", "Maziero", "Maycon", "Josué", "Cigano", "Farinha", "Cobrinha", "Tubarão", "Gordinho"];
+    const testParticipants: Participant[] = [];
+    const testEntries: Entry[] = [];
+    const usedNumbers = new Set(data.entries.map(e => e.number));
+    
+    names.forEach((name, i) => {
+      let num;
+      do { num = Math.floor(Math.random() * 200) + 1; } while (usedNumbers.has(num));
+      usedNumbers.add(num);
+      
+      const id = Math.random().toString(36).substring(7) + Date.now();
+      testParticipants.push({ id, name, entryNumbers: [num] });
+      testEntries.push({ 
+        number: num, 
+        participantId: id, 
+        participantName: name, 
+        status: 'active', 
+        currentRound: 1 
+      });
+    });
+
     updateData(prev => ({
       ...prev,
-      currentRound: typeof val === 'function' ? val(prev.currentRound) : val
+      participants: [...prev.participants, ...testParticipants],
+      entries: [...prev.entries, ...testEntries]
     }));
+    alert(`${names.length} jogadores de teste adicionados!`);
   };
 
   const handleResetTournament = () => {
@@ -242,9 +269,11 @@ const App: React.FC = () => {
           <div className="space-y-12">
             <AdminParticipants 
               participants={data.participants} 
-              setParticipants={setParticipants} 
               entries={data.entries}
-              setEntries={setEntries}
+              onAddParticipant={handleRegisterParticipant}
+              onRemoveParticipant={handleRemoveParticipant}
+              onEditParticipant={handleEditParticipant}
+              onGenerateTestData={handleGenerateTestData}
             />
             <div className="pt-8 border-t border-red-900/30">
               <div className="danger-zone border border-red-900/40 p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6">
@@ -268,11 +297,11 @@ const App: React.FC = () => {
             <AdminMatches 
               participants={data.participants}
               entries={data.entries}
-              setEntries={setEntries}
+              setEntries={(val) => updateData(prev => ({ ...prev, entries: typeof val === 'function' ? val(prev.entries) : val }))}
               matches={data.matches}
-              setMatches={setMatches}
+              setMatches={(val) => updateData(prev => ({ ...prev, matches: typeof val === 'function' ? val(prev.matches) : val }))}
               currentRound={data.currentRound}
-              setCurrentRound={setCurrentRound}
+              setCurrentRound={(val) => updateData(prev => ({ ...prev, currentRound: typeof val === 'function' ? val(prev.currentRound) : val }))}
             />
             <div className="pt-8 border-t border-red-900/30">
               <div className="danger-zone border border-red-900/40 p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6">
