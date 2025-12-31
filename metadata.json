@@ -1,0 +1,5 @@
+{
+  "name": "Mestre da Sinuca - Gestão de Torneio",
+  "description": "Um aplicativo completo para gerenciamento de torneios de sinuca, permitindo o cadastro de participantes, controle de inscrições (1-200), chaveamento de mata-mata com suporte a 'byes' e visualização pública de confrontos.",
+  "requestFramePermissions": []
+}
