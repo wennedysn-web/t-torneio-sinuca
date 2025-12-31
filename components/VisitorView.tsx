@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { Entry, Match } from '../types';
 import { Trophy, Swords, User, History, Star, Medal } from 'lucide-react';
@@ -7,9 +6,10 @@ interface Props {
   entries: Entry[];
   matches: Match[];
   currentRound: number;
+  motto?: string;
 }
 
-const VisitorView: React.FC<Props> = ({ entries, matches, currentRound }) => {
+const VisitorView: React.FC<Props> = ({ entries, matches, currentRound, motto }) => {
   const [filterRound, setFilterRound] = useState(currentRound);
 
   const filteredMatches = useMemo(() => {
@@ -29,7 +29,11 @@ const VisitorView: React.FC<Props> = ({ entries, matches, currentRound }) => {
 
   return (
     <div className="space-y-12 animate-in fade-in duration-700">
-      {/* Live Status Cards */}
+      <div className="py-8 px-4 text-center border-b border-emerald-900/20 bg-emerald-900/5 -mx-4 -mt-8 mb-8">
+        <h2 className="text-3xl font-black mb-2">Torneio em Tempo Real</h2>
+        <p className="text-emerald-500 text-sm italic">{motto || "Onde a tática encontra a precisão."}</p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform">
@@ -63,19 +67,18 @@ const VisitorView: React.FC<Props> = ({ entries, matches, currentRound }) => {
         </div>
       </div>
 
-      {/* Rounds Navigation */}
       <div className="space-y-6">
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <h3 className="text-2xl font-black text-white flex items-center gap-2">
             <History className="w-6 h-6 text-emerald-500" />
             Quadro de Confrontos
           </h3>
-          <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+          <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 overflow-x-auto max-w-[200px] md:max-w-none">
             {rounds.map(r => (
               <button
                 key={r}
                 onClick={() => setFilterRound(r)}
-                className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${filterRound === r ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                className={`px-4 py-2 rounded-lg text-xs font-black transition-all flex-shrink-0 ${filterRound === r ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
               >
                 R{r}
               </button>
@@ -92,7 +95,6 @@ const VisitorView: React.FC<Props> = ({ entries, matches, currentRound }) => {
             filteredMatches.map(match => (
               <div key={match.id} className="group bg-slate-900/40 border border-slate-800 rounded-2xl p-6 hover:border-emerald-500/50 transition-all hover:bg-slate-900/80">
                 <div className="flex items-center justify-center gap-6">
-                  {/* Player 1 */}
                   <div className="flex flex-col items-center gap-3 flex-1 min-w-0">
                     <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-black border-4 transition-all shadow-lg ${match.winner === match.entry1 ? 'bg-emerald-600 border-emerald-400 text-white scale-110 rotate-3' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>
                       {match.entry1}
@@ -107,7 +109,6 @@ const VisitorView: React.FC<Props> = ({ entries, matches, currentRound }) => {
                     {match.isBye && <span className="text-[10px] bg-indigo-900/50 text-indigo-400 px-2 py-0.5 rounded-full font-bold">FOLGA</span>}
                   </div>
 
-                  {/* Player 2 */}
                   <div className="flex flex-col items-center gap-3 flex-1 min-w-0">
                     <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-black border-4 transition-all shadow-lg ${match.winner === match.entry2 ? 'bg-emerald-600 border-emerald-400 text-white scale-110 -rotate-3' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>
                       {match.isBye ? '--' : match.entry2}
@@ -141,7 +142,6 @@ const VisitorView: React.FC<Props> = ({ entries, matches, currentRound }) => {
         </div>
       </div>
 
-      {/* Hall of Fame / Active Entries */}
       <div className="bg-slate-900/60 rounded-3xl p-8 border border-slate-800">
         <h3 className="text-xl font-black text-white mb-6 flex items-center gap-2">
           <User className="w-6 h-6 text-emerald-500" />

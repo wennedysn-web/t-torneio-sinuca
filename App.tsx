@@ -18,7 +18,6 @@ const App: React.FC = () => {
   const [motto, setMotto] = useState("Onde a tática encontra a precisão.");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Busca inicial e Sincronização em tempo real com Supabase
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
@@ -58,7 +57,6 @@ const App: React.FC = () => {
         (payload: any) => {
           const newData = payload.new;
           if (newData) {
-            // Só atualiza se o timestamp for mais recente para evitar loops de estados antigos
             setParticipants(newData.participants || []);
             setEntries(newData.entries || []);
             setMatches(newData.matches || []);
@@ -73,7 +71,6 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Helper unificado para salvar no Supabase de forma atômica
   const syncWithSupabase = useCallback(async (
     p: Participant[], 
     e: Entry[], 
@@ -126,6 +123,34 @@ const App: React.FC = () => {
       syncWithSupabase(participants, entries, matches, next);
       return next;
     });
+  };
+
+  const handleResetTournament = () => {
+    if (!confirm("⚠️ ATENÇÃO: Isso apagará TODOS os participantes, inscrições e partidas. Esta ação não pode ser desfeita. Deseja continuar?")) return;
+    if (!confirm("TEM CERTEZA ABSOLUTA? Todos os dados serão perdidos.")) return;
+    
+    setParticipants([]);
+    setEntries([]);
+    setMatches([]);
+    setCurrentRound(1);
+    syncWithSupabase([], [], [], 1);
+  };
+
+  const handleResetCurrentRound = () => {
+    if (!confirm(`Deseja resetar a Rodada ${currentRound}? Todos os confrontos desta rodada serão apagados e os jogadores eliminados nela voltarão a ficar ativos.`)) return;
+
+    const newMatches = matches.filter(m => m.round !== currentRound);
+    const newEntries = entries.map(e => {
+      // Se o jogador estava na rodada atual ou em uma futura (avançou), volta para a atual como ativo
+      if (e.currentRound >= currentRound) {
+        return { ...e, status: 'active' as const, currentRound: currentRound };
+      }
+      return e;
+    });
+
+    setMatches(newMatches);
+    setEntries(newEntries);
+    syncWithSupabase(participants, newEntries, newMatches, currentRound);
   };
 
   useEffect(() => {
@@ -193,13 +218,6 @@ const App: React.FC = () => {
         </div>
       </nav>
 
-      {view === 'visitor' && (
-        <div className="py-8 px-4 text-center border-b border-emerald-900/20 bg-emerald-900/5">
-           <h2 className="text-3xl font-black mb-2">Torneio em Tempo Real</h2>
-           <p className="text-emerald-500 text-sm italic">{motto}</p>
-        </div>
-      )}
-
       <main className="max-w-7xl mx-auto px-4 py-8">
         {view === 'admin-login' && (
           <div className="max-w-md mx-auto mt-20 p-8 bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl">
@@ -219,28 +237,60 @@ const App: React.FC = () => {
         )}
 
         {view === 'admin-participants' && (
-          <AdminParticipants 
-            participants={participants} 
-            setParticipants={updateParticipants} 
-            entries={entries}
-            setEntries={updateEntries}
-          />
+          <>
+            <AdminParticipants 
+              participants={participants} 
+              setParticipants={updateParticipants} 
+              entries={entries}
+              setEntries={updateEntries}
+            />
+            <div className="mt-20 pt-8 border-t border-red-900/30">
+              <div className="bg-red-900/10 border border-red-900/30 p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-red-500 font-bold text-lg">Zona de Perigo</h3>
+                  <p className="text-slate-500 text-sm">Cuidado: Estas ações apagam dados permanentemente.</p>
+                </div>
+                <button 
+                  onClick={handleResetTournament}
+                  className="bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/30 font-bold px-6 py-2 rounded-lg transition-all"
+                >
+                  Limpar Todos os Dados
+                </button>
+              </div>
+            </div>
+          </>
         )}
 
         {view === 'admin-matches' && (
-          <AdminMatches 
-            participants={participants}
-            entries={entries}
-            setEntries={updateEntries}
-            matches={matches}
-            setMatches={updateMatches}
-            currentRound={currentRound}
-            setCurrentRound={updateRound}
-          />
+          <>
+            <AdminMatches 
+              participants={participants}
+              entries={entries}
+              setEntries={updateEntries}
+              matches={matches}
+              setMatches={updateMatches}
+              currentRound={currentRound}
+              setCurrentRound={updateRound}
+            />
+            <div className="mt-20 pt-8 border-t border-red-900/30">
+              <div className="bg-red-900/10 border border-red-900/30 p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-red-500 font-bold text-lg">Resetar Rodada</h3>
+                  <p className="text-slate-500 text-sm">Apaga todos os jogos da rodada atual e reativa os jogadores.</p>
+                </div>
+                <button 
+                  onClick={handleResetCurrentRound}
+                  className="bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/30 font-bold px-6 py-2 rounded-lg transition-all"
+                >
+                  Resetar Rodada {currentRound}
+                </button>
+              </div>
+            </div>
+          </>
         )}
 
         {view === 'visitor' && (
-          <VisitorView entries={entries} matches={matches} currentRound={currentRound} />
+          <VisitorView entries={entries} matches={matches} currentRound={currentRound} motto={motto} />
         )}
       </main>
     </div>
