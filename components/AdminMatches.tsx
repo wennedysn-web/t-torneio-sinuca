@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Participant, Entry, Match } from '../types';
 import { Swords, Trophy, Play, CheckCircle2, ChevronRight, Hash, Trash2, ArrowRightLeft, Sparkles } from 'lucide-react';
@@ -16,6 +15,12 @@ interface Props {
 const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matches, setMatches, currentRound, setCurrentRound }) => {
   const [input1, setInput1] = useState('');
   const [input2, setInput2] = useState('');
+
+  const generateId = () => {
+    return typeof crypto.randomUUID === 'function' 
+      ? crypto.randomUUID() 
+      : Math.random().toString(36).substring(2) + Date.now().toString(36);
+  };
 
   // Active entries for current round
   const activeEntries = useMemo(() => {
@@ -61,7 +66,7 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
     }
 
     const newMatch: Match = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       round: currentRound,
       entry1: num1,
       entry2: num2,
@@ -104,7 +109,7 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
 
     const entry = unmatchedEntries[0];
     const newMatch: Match = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       round: currentRound,
       entry1: entry.number,
       entry2: null,
