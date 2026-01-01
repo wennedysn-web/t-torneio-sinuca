@@ -1,28 +1,37 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Participant, Entry } from '../types';
-import { Plus, Trash2, UserPlus, Database, Edit2, Check, X, User, Sparkles } from 'lucide-react';
+import { Plus, Trash2, UserPlus, Database, Edit2, Check, X, User, Sparkles, Youtube, Save } from 'lucide-react';
 
 interface Props {
   participants: Participant[];
   entries: Entry[];
+  youtubeLink?: string;
   onAddParticipant: (p: Participant, e: Entry[]) => void;
   onRemoveParticipant: (id: string) => void;
   onEditParticipant: (id: string, name: string) => void;
+  onUpdateYoutube: (link: string) => void;
   onGenerateTestData: () => void;
 }
 
 const AdminParticipants: React.FC<Props> = ({ 
   participants, 
   entries, 
+  youtubeLink = '',
   onAddParticipant, 
   onRemoveParticipant, 
   onEditParticipant,
+  onUpdateYoutube,
   onGenerateTestData 
 }) => {
   const [name, setName] = useState('');
   const [entryInput, setEntryInput] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [ytInput, setYtInput] = useState(youtubeLink);
+
+  useEffect(() => {
+    setYtInput(youtubeLink);
+  }, [youtubeLink]);
 
   const generateId = () => Math.random().toString(36).substring(2) + Date.now().toString(36);
 
@@ -53,6 +62,12 @@ const AdminParticipants: React.FC<Props> = ({
     setEntryInput('');
   };
 
+  const handleYtSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onUpdateYoutube(ytInput);
+    alert("Link do YouTube atualizado com sucesso!");
+  };
+
   const saveEdit = () => {
     if (!editingName.trim()) return;
     onEditParticipant(editingId!, editingName.trim());
@@ -68,7 +83,7 @@ const AdminParticipants: React.FC<Props> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h2 className="text-3xl font-black text-white flex items-center gap-3">
           <UserPlus className="w-8 h-8 text-emerald-500" />
-          Gerenciar Participantes
+          Configurações e Jogadores
         </h2>
         <div className="flex items-center gap-3">
           <button 
@@ -84,8 +99,30 @@ const AdminParticipants: React.FC<Props> = ({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1">
-          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl sticky top-24">
+        <div className="lg:col-span-1 space-y-6">
+          {/* YouTube Live Section */}
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-red-500">
+              <Youtube className="w-5 h-5" /> Link da Live
+            </h3>
+            <form onSubmit={handleYtSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5">URL do YouTube</label>
+                <input 
+                  type="url" 
+                  value={ytInput} 
+                  onChange={(e) => setYtInput(e.target.value)} 
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-red-500 outline-none transition-all text-sm" 
+                  placeholder="https://www.youtube.com/watch?v=..." 
+                />
+              </div>
+              <button type="submit" className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2">
+                <Save className="w-4 h-4" /> Atualizar Live
+              </button>
+            </form>
+          </div>
+
+          <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-emerald-400">
               <Plus className="w-5 h-5" /> Novo Cadastro
             </h3>
@@ -111,7 +148,6 @@ const AdminParticipants: React.FC<Props> = ({
                   placeholder="Ex: 7, 22, 45" 
                   required 
                 />
-                <p className="text-[10px] text-slate-600 mt-1 font-medium">Separe por vírgula. Máximo 3 por pessoa.</p>
               </div>
               <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg active:scale-95">Cadastrar Jogador</button>
             </form>
@@ -123,7 +159,7 @@ const AdminParticipants: React.FC<Props> = ({
              <User className="w-5 h-5 text-emerald-500" /> 
              Lista de Inscritos ({participants.length})
           </h3>
-          <div className="grid gap-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="grid gap-3 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
             {sortedParticipants.length === 0 ? (
               <div className="py-20 text-center bg-slate-900/50 rounded-2xl border-2 border-dashed border-slate-800 text-slate-500">
                 <Database className="w-12 h-12 text-slate-800 mx-auto mb-3" />

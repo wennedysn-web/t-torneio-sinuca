@@ -12,6 +12,7 @@ interface TournamentData {
   entries: Entry[];
   matches: Match[];
   currentRound: number;
+  youtubeLink: string;
 }
 
 const App: React.FC = () => {
@@ -22,7 +23,8 @@ const App: React.FC = () => {
     participants: [],
     entries: [],
     matches: [],
-    currentRound: 1
+    currentRound: 1,
+    youtubeLink: ''
   });
   const [motto, setMotto] = useState("Onde a tática encontra a precisão.");
   const [isLoading, setIsLoading] = useState(true);
@@ -44,7 +46,8 @@ const App: React.FC = () => {
             participants: remoteData.participants || [],
             entries: remoteData.entries || [],
             matches: remoteData.matches || [],
-            currentRound: remoteData.current_round || 1
+            currentRound: remoteData.current_round || 1,
+            youtubeLink: remoteData.youtube_link || ''
           });
         }
       } catch (err) {
@@ -68,7 +71,8 @@ const App: React.FC = () => {
               participants: newData.participants || [],
               entries: newData.entries || [],
               matches: newData.matches || [],
-              currentRound: newData.current_round || 1
+              currentRound: newData.current_round || 1,
+              youtubeLink: newData.youtube_link || ''
             });
           }
         }
@@ -86,11 +90,17 @@ const App: React.FC = () => {
         entries: nextData.entries,
         matches: nextData.matches,
         current_round: nextData.currentRound,
+        youtube_link: nextData.youtubeLink,
         last_update: new Date().toISOString()
       })
       .eq('id', 'main');
 
-    if (error) console.error("Erro na sincronização:", error.message);
+    if (error) {
+      console.error("Erro na sincronização:", error.message);
+      if (error.code === '42703' || error.message.includes('youtube_link')) {
+        alert("⚠️ ERRO DE BANCO: A coluna 'youtube_link' não existe. Execute o SQL ALTER TABLE no painel do Supabase.");
+      }
+    }
   }, []);
 
   // Wrapper principal de atualização
@@ -102,7 +112,6 @@ const App: React.FC = () => {
     });
   };
 
-  // Funções administrativas delegadas
   const handleRegisterParticipant = (participant: Participant, newEntries: Entry[]) => {
     updateData(prev => ({
       ...prev,
@@ -127,26 +136,36 @@ const App: React.FC = () => {
     }));
   };
 
+  const handleUpdateYoutube = (link: string) => {
+    updateData(prev => ({ ...prev, youtubeLink: link }));
+  };
+
   const handleGenerateTestData = () => {
     const names = ["Baianinho", "Bruxo", "Maziero", "Maycon", "Josué", "Cigano", "Farinha", "Cobrinha", "Tubarão", "Gordinho"];
     const testParticipants: Participant[] = [];
     const testEntries: Entry[] = [];
     const usedNumbers = new Set(data.entries.map(e => e.number));
     
-    names.forEach((name, i) => {
+    names.forEach((name) => {
       let num;
-      do { num = Math.floor(Math.random() * 200) + 1; } while (usedNumbers.has(num));
-      usedNumbers.add(num);
+      let attempts = 0;
+      do { 
+        num = Math.floor(Math.random() * 200) + 1; 
+        attempts++;
+      } while (usedNumbers.has(num) && attempts < 500);
       
-      const id = Math.random().toString(36).substring(7) + Date.now();
-      testParticipants.push({ id, name, entryNumbers: [num] });
-      testEntries.push({ 
-        number: num, 
-        participantId: id, 
-        participantName: name, 
-        status: 'active', 
-        currentRound: 1 
-      });
+      if (attempts < 500) {
+        usedNumbers.add(num);
+        const id = Math.random().toString(36).substring(7) + Date.now();
+        testParticipants.push({ id, name, entryNumbers: [num] });
+        testEntries.push({ 
+          number: num, 
+          participantId: id, 
+          participantName: name, 
+          status: 'active', 
+          currentRound: 1 
+        });
+      }
     });
 
     updateData(prev => ({
@@ -154,22 +173,18 @@ const App: React.FC = () => {
       participants: [...prev.participants, ...testParticipants],
       entries: [...prev.entries, ...testEntries]
     }));
-    alert(`${names.length} jogadores de teste adicionados!`);
+    alert(`${testParticipants.length} jogadores de teste adicionados!`);
   };
 
   const handleResetTournament = () => {
     if (!confirm("⚠️ ATENÇÃO: Isso apagará TODOS os dados. Deseja continuar?")) return;
-    if (!confirm("CONFIRMAÇÃO FINAL: Todos os participantes e jogos serão perdidos.")) return;
-    
-    const resetData = { participants: [], entries: [], matches: [], currentRound: 1 };
+    const resetData = { participants: [], entries: [], matches: [], currentRound: 1, youtubeLink: '' };
     setData(resetData);
     syncWithSupabase(resetData);
   };
 
   const handleResetCurrentRound = () => {
-    const msg = `Deseja resetar a Rodada ${data.currentRound}?\n\nOs jogos desta rodada serão apagados e os jogadores voltarão para a lista de sorteio como 'Disponíveis'.`;
-    if (!confirm(msg)) return;
-
+    if (!confirm(`Deseja resetar a Rodada ${data.currentRound}?`)) return;
     updateData(prev => {
       const filteredMatches = prev.matches.filter(m => m.round !== prev.currentRound);
       const resetEntries = prev.entries.map(e => {
@@ -212,7 +227,7 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-400 font-bold animate-pulse">Carregando Mestre da Sinuca...</p>
+          <p className="text-slate-400 font-bold animate-pulse">Sincronizando com Supabase...</p>
         </div>
       </div>
     );
@@ -270,9 +285,11 @@ const App: React.FC = () => {
             <AdminParticipants 
               participants={data.participants} 
               entries={data.entries}
+              youtubeLink={data.youtubeLink}
               onAddParticipant={handleRegisterParticipant}
               onRemoveParticipant={handleRemoveParticipant}
               onEditParticipant={handleEditParticipant}
+              onUpdateYoutube={handleUpdateYoutube}
               onGenerateTestData={handleGenerateTestData}
             />
             <div className="pt-8 border-t border-red-900/30">
@@ -321,7 +338,13 @@ const App: React.FC = () => {
         )}
 
         {view === 'visitor' && (
-          <VisitorView entries={data.entries} matches={data.matches} currentRound={data.currentRound} motto={motto} />
+          <VisitorView 
+            entries={data.entries} 
+            matches={data.matches} 
+            currentRound={data.currentRound} 
+            motto={motto} 
+            youtubeLink={data.youtubeLink}
+          />
         )}
       </main>
     </div>

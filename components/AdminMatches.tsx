@@ -100,12 +100,11 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
     const match = matches.find(m => m.id === matchId);
     if (!match || !match.winner) return;
 
-    if (!confirm("Deseja anular o vencedor deste jogo? Os jogadores voltarão a disputar esta rodada.")) return;
+    if (!confirm("Deseja anular o vencedor deste jogo?")) return;
 
     const winnerNumber = match.winner;
     const loserNumber = match.entry1 === winnerNumber ? match.entry2 : match.entry1;
 
-    // Reverter estados dos jogadores
     setEntries(prev => prev.map(e => {
       if (e.number === winnerNumber || (loserNumber !== null && e.number === loserNumber)) {
         return { ...e, status: 'active' as const, currentRound: currentRound };
@@ -113,7 +112,6 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
       return e;
     }));
 
-    // Limpar vencedor no jogo
     setMatches(prev => prev.map(m => m.id === matchId ? { ...m, winner: null } : m));
   };
 
@@ -121,7 +119,7 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
     const match = matches.find(m => m.id === matchId);
     if (!match) return;
 
-    if (!confirm("Deseja excluir este confronto completamente?")) return;
+    if (!confirm("Deseja excluir este confronto?")) return;
 
     if (match.winner) {
       const winnerNumber = match.winner;
@@ -239,7 +237,7 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
             [...currentMatches].reverse().map((match, idx) => (
               <div key={match.id} className={`bg-slate-900 border rounded-2xl overflow-hidden shadow-sm transition-all ${match.winner ? 'border-emerald-500/30' : 'border-slate-800'}`}>
                 <div className="bg-slate-800/50 px-4 py-2 flex justify-between items-center border-b border-slate-800">
-                  <span className="text-[10px] font-black uppercase text-slate-400">PARTIDA #{currentMatches.length - idx}</span>
+                  <span className="text-[10px] font-black uppercase text-slate-400">JOGO DA RODADA</span>
                   <div className="flex gap-2">
                     {match.winner && (
                       <button onClick={() => clearWinner(match.id)} className="flex items-center gap-1 text-amber-500 hover:text-amber-400 font-bold text-[9px] uppercase transition-colors">

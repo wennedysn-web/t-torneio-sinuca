@@ -1,16 +1,26 @@
 import React, { useMemo, useState } from 'react';
 import { Entry, Match } from '../types';
-import { Trophy, Swords, User, History, Star, Medal } from 'lucide-react';
+import { Trophy, Swords, User, History, Star, Medal, Youtube, PlayCircle } from 'lucide-react';
 
 interface Props {
   entries: Entry[];
   matches: Match[];
   currentRound: number;
   motto?: string;
+  youtubeLink?: string;
 }
 
-const VisitorView: React.FC<Props> = ({ entries, matches, currentRound, motto }) => {
+const VisitorView: React.FC<Props> = ({ entries, matches, currentRound, motto, youtubeLink }) => {
   const [filterRound, setFilterRound] = useState(currentRound);
+
+  const getYoutubeId = (url: string) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const videoId = useMemo(() => getYoutubeId(youtubeLink || ''), [youtubeLink]);
 
   const filteredMatches = useMemo(() => {
     return matches.filter(m => m.round === filterRound);
@@ -33,6 +43,27 @@ const VisitorView: React.FC<Props> = ({ entries, matches, currentRound, motto })
         <h2 className="text-3xl font-black mb-2">Torneio em Tempo Real</h2>
         <p className="text-emerald-500 text-sm italic">{motto || "Onde a tática encontra a precisão."}</p>
       </div>
+
+      {/* Live Preview Section */}
+      {videoId && (
+        <div className="max-w-4xl mx-auto space-y-4">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <PlayCircle className="w-6 h-6 text-red-500 animate-pulse" />
+            Transmissão ao Vivo
+          </h3>
+          <div className="relative aspect-video w-full rounded-3xl overflow-hidden border-4 border-slate-900 shadow-2xl bg-black">
+            <iframe 
+              width="100%" 
+              height="100%" 
+              src={`https://www.youtube.com/embed/${videoId}`} 
+              title="YouTube video player" 
+              frameBorder="0" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+              allowFullScreen
+            ></iframe>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl relative overflow-hidden group">
