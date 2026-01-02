@@ -62,17 +62,17 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
       return;
     }
 
-    // REGRA DE AUTOCONFRONTO
-    if (entry1.participantId === entry2.participantId) {
+    // REGRA DE AUTOCONFRONTO (Mesmo Participante ou Mesmo Nome)
+    if (entry1.participantId === entry2.participantId || entry1.participantName.toLowerCase() === entry2.participantName.toLowerCase()) {
       if (currentRound === 1) {
-        alert(`⚠️ AUTOCONFRONTO DETECTADO: ${entry1.participantName} (#${num1}) e (#${num2}) são o mesmo competidor. Na Rodada 1 isso NÃO é permitido. Por favor, realize um novo sorteio da última bola sorteada.`);
+        alert(`❌ AUTOCONFRONTO BLOQUEADO (Rodada 1): ${entry1.participantName} (#${num1}) e (#${num2}) são o mesmo competidor. Na primeira rodada isso não é permitido. Por favor, realize um novo sorteio para substituir uma das bolas.`);
         return;
       } else {
         // Rodada 2 ou mais: O de maior numeração ganha automaticamente
         const autoWinner = num1 > num2 ? num1 : num2;
         const autoLoser = num1 > num2 ? num2 : num1;
         
-        if (confirm(`⚠️ AUTOCONFRONTO (Rodada ${currentRound}): ${entry1.participantName} se enfrentou. Pela regra, a inscrição de maior numeração (#${autoWinner}) será declarada vencedora automaticamente. Confirmar?`)) {
+        if (confirm(`⚠️ AUTOCONFRONTO (Rodada ${currentRound}): ${entry1.participantName} se enfrentou. Pela regra, a inscrição de maior numeração (#${autoWinner}) será declarada vencedora automaticamente sem disputa. Confirmar?`)) {
           const newMatch: Match = {
             id: generateId(),
             round: currentRound,
@@ -123,7 +123,7 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
 
     setEntries(prev => prev.map(e => {
       if (e.number === winnerNumber) {
-        return { ...e, currentRound: currentRound + 1 }; 
+        return { ...e, currentRound: currentRound + 1, status: 'active' as const }; 
       }
       if (e.number === loserNumber) {
         return { ...e, status: 'eliminated' };
@@ -134,13 +134,14 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
 
   const clearWinner = (matchId: string) => {
     const match = matches.find(m => m.id === matchId);
-    if (!match || !match.winner) return;
+    if (!match || match.winner === null) return;
 
-    if (!confirm("Deseja anular o vencedor deste jogo?")) return;
+    if (!confirm("Deseja anular o vencedor e REINICIAR esta partida?")) return;
 
     const winnerNumber = match.winner;
     const loserNumber = match.entry1 === winnerNumber ? match.entry2 : match.entry1;
 
+    // Reseta as inscrições para o estado da rodada atual
     setEntries(prev => prev.map(e => {
       if (e.number === winnerNumber || (loserNumber !== null && e.number === loserNumber)) {
         return { ...e, status: 'active' as const, currentRound: currentRound };
@@ -148,6 +149,7 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
       return e;
     }));
 
+    // Define winner como NULL para resetar a interface visual
     setMatches(prev => prev.map(m => m.id === matchId ? { ...m, winner: null } : m));
   };
 
@@ -155,9 +157,9 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
     const match = matches.find(m => m.id === matchId);
     if (!match) return;
 
-    if (!confirm("Deseja excluir este confronto?")) return;
+    if (!confirm("Deseja EXCLUIR permanentemente este confronto?")) return;
 
-    if (match.winner) {
+    if (match.winner !== null) {
       const winnerNumber = match.winner;
       const loserNumber = match.entry1 === winnerNumber ? match.entry2 : match.entry1;
       
@@ -191,11 +193,11 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
   const advanceRound = () => {
     const allDecided = currentMatches.every(m => m.winner !== null);
     if (!allDecided) {
-      alert("Decida todos os ganhadores desta rodada antes de avançar.");
+      alert("Você deve decidir todos os vencedores antes de avançar para a próxima rodada.");
       return;
     }
     if (unmatchedEntries.length > 0) {
-      alert("Ainda existem inscrições sem confrontos definidos.");
+      alert("Ainda existem inscrições esperando sorteio/confronto.");
       return;
     }
     setCurrentRound(prev => prev + 1);
@@ -212,16 +214,16 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
         <div>
           <h2 className="text-3xl font-black text-white flex items-center gap-3">
             <Swords className="w-8 h-8 text-emerald-500" />
-            Gestão de Rodada {currentRound}
+            Mesa de Confrontos - R{currentRound}
           </h2>
-          <p className="text-slate-400 mt-1">Lançamento de resultados da rodada atual.</p>
+          <p className="text-slate-400 mt-1">Gerencie os jogos e defina quem avança.</p>
         </div>
         
         <button 
           onClick={advanceRound}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-xl text-white font-bold transition-all shadow-lg"
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-xl text-white font-bold transition-all shadow-lg shadow-emerald-900/20 active:scale-95"
         >
-          Próxima Rodada <ChevronRight className="w-5 h-5" />
+          Finalizar Rodada <ChevronRight className="w-5 h-5" />
         </button>
       </div>
 
@@ -229,7 +231,7 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
         <div className="lg:col-span-1 space-y-4">
           <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5 shadow-xl">
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
-              <Hash className="w-4 h-4" /> Lista de Espera ({unmatchedEntries.length})
+              <Hash className="w-4 h-4" /> No Globo ({unmatchedEntries.length})
             </h3>
             <div className="flex flex-wrap gap-2">
               {unmatchedEntries.map(e => (
@@ -238,84 +240,90 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
                 </div>
               ))}
               {unmatchedEntries.length === 0 && (
-                <p className="text-[10px] text-emerald-500 font-bold uppercase text-center w-full py-2">Todos emparelhados</p>
+                <p className="text-[10px] text-emerald-500 font-bold uppercase text-center w-full py-2">Mesa Completa</p>
               )}
             </div>
 
             {unmatchedEntries.length === 1 && (
               <button 
                 onClick={handleBye}
-                className="mt-6 w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all"
+                className="mt-6 w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-indigo-900/20"
               >
-                Aplicar BYE
+                Atribuir Folga (BYE)
               </button>
             )}
           </div>
 
           <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5 shadow-xl">
-             <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Novo Jogo</h3>
+             <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Novo Confronto</h3>
              <form onSubmit={addMatch} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <input type="number" value={input1} onChange={(e) => setInput1(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-center text-lg font-black focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Bola 1" />
-                  <input type="number" value={input2} onChange={(e) => setInput2(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-center text-lg font-black focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Bola 2" />
+                  <div className="space-y-1 text-center">
+                    <label className="text-[9px] uppercase font-bold text-slate-600">Bola A</label>
+                    <input type="number" value={input1} onChange={(e) => setInput1(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-center text-lg font-black focus:ring-2 focus:ring-emerald-500 outline-none text-emerald-400" placeholder="00" />
+                  </div>
+                  <div className="space-y-1 text-center">
+                    <label className="text-[9px] uppercase font-bold text-slate-600">Bola B</label>
+                    <input type="number" value={input2} onChange={(e) => setInput2(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-center text-lg font-black focus:ring-2 focus:ring-emerald-500 outline-none text-emerald-400" placeholder="00" />
+                  </div>
                 </div>
-                <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-all">Emparelhar</button>
+                <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg active:scale-95">Emparelhar Mesa</button>
              </form>
           </div>
           
           <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
             <h4 className="text-[10px] font-black uppercase text-amber-500 flex items-center gap-1.5 mb-2">
-              <AlertCircle className="w-3 h-3" /> Regra de Autoconfronto
+              <AlertCircle className="w-3 h-3" /> Regras de Autoconfronto
             </h4>
             <ul className="text-[9px] text-slate-400 space-y-1.5 list-disc pl-3">
-              <li><b>Rodada 1:</b> Proibido se enfrentar. Refazer o sorteio da última bola.</li>
-              <li><b>Rodada 2+:</b> Permitido. A bola de <b>maior numeração</b> avança automaticamente.</li>
+              <li><b>Rodada 1:</b> Proibido jogar contra si mesmo. Se sorteado, deve-se realizar novo sorteio da última bola.</li>
+              <li><b>Rodada 2+:</b> Permitido. A inscrição de <b>maior numeração</b> avança automaticamente por W.O. técnico.</li>
             </ul>
           </div>
         </div>
 
-        <div className="lg:col-span-3 grid gap-4 sm:grid-cols-2">
+        <div className="lg:col-span-3 grid gap-4 sm:grid-cols-2 content-start">
           {currentMatches.length === 0 ? (
-            <div className="sm:col-span-2 py-20 text-center bg-slate-900/50 rounded-2xl border-2 border-dashed border-slate-800 text-slate-500 italic">
-               Nenhum confronto criado para esta rodada.
+            <div className="sm:col-span-2 py-20 text-center bg-slate-900/50 rounded-2xl border-2 border-dashed border-slate-800 text-slate-600 italic">
+               Aguardando lançamento dos primeiros sorteios...
             </div>
           ) : (
-            [...currentMatches].reverse().map((match, idx) => (
-              <div key={match.id} className={`bg-slate-900 border rounded-2xl overflow-hidden shadow-sm transition-all ${match.winner ? 'border-emerald-500/30' : 'border-slate-800'}`}>
+            [...currentMatches].reverse().map((match) => (
+              <div key={match.id} className={`bg-slate-900 border rounded-2xl overflow-hidden shadow-sm transition-all duration-300 ${match.winner !== null ? 'border-emerald-500/50 ring-1 ring-emerald-500/20' : 'border-slate-800'}`}>
                 <div className="bg-slate-800/50 px-4 py-2 flex justify-between items-center border-b border-slate-800">
-                  <span className="text-[10px] font-black uppercase text-slate-400">JOGO DA RODADA</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Status: {match.winner !== null ? 'Finalizado' : 'Em Jogo'}</span>
                   <div className="flex gap-2">
-                    {match.winner && (
-                      <button onClick={() => clearWinner(match.id)} className="flex items-center gap-1 text-amber-500 hover:text-amber-400 font-bold text-[9px] uppercase transition-colors">
-                        <RotateCcw className="w-3 h-3" /> Reiniciar
+                    {match.winner !== null && (
+                      <button onClick={() => clearWinner(match.id)} className="flex items-center gap-1 text-amber-500 hover:text-amber-400 font-bold text-[9px] uppercase transition-colors group">
+                        <RotateCcw className="w-3 h-3 group-hover:rotate-[-90deg] transition-transform" /> Reiniciar Partida
                       </button>
                     )}
-                    <button onClick={() => deleteMatch(match.id)} className="text-slate-500 hover:text-red-500 transition-colors">
+                    <button onClick={() => deleteMatch(match.id)} className="text-slate-600 hover:text-red-500 transition-colors">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
                 
-                <div className="p-4 grid grid-cols-7 items-center">
-                  <div className="col-span-3 text-center space-y-1">
-                    <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center font-black text-xl border-4 transition-all ${match.winner === match.entry1 ? 'bg-emerald-600 border-emerald-400 text-white scale-110' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>
+                <div className="p-5 grid grid-cols-7 items-center gap-2">
+                  <div className="col-span-3 text-center space-y-2">
+                    <div className={`mx-auto w-14 h-14 rounded-full flex items-center justify-center font-black text-2xl border-4 transition-all duration-500 ${match.winner === match.entry1 ? 'bg-emerald-600 border-emerald-400 text-white scale-110 shadow-lg shadow-emerald-500/20' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
                       {match.entry1}
                     </div>
-                    <p className={`text-[10px] font-bold truncate ${match.winner === match.entry1 ? 'text-emerald-400' : 'text-slate-400'}`}>{getEntryName(match.entry1)}</p>
-                    {!match.winner && !match.isBye && (
-                      <button onClick={() => setWinner(match.id, match.entry1!)} className="w-full text-[9px] bg-slate-800 hover:bg-emerald-600 border border-slate-700 rounded py-1 font-bold transition-all">GANHOU</button>
+                    <p className={`text-[10px] font-bold truncate px-1 transition-colors ${match.winner === match.entry1 ? 'text-emerald-400' : 'text-slate-500'}`}>{getEntryName(match.entry1)}</p>
+                    {match.winner === null && !match.isBye && (
+                      <button onClick={() => setWinner(match.id, match.entry1!)} className="w-full text-[9px] bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white border border-slate-700 hover:border-emerald-500 rounded-lg py-1.5 font-black transition-all active:scale-95">GANHOU</button>
                     )}
                   </div>
 
-                  <div className="col-span-1 text-center text-slate-600 font-black text-xs">VS</div>
+                  <div className="col-span-1 text-center text-slate-700 font-black text-xs italic">VS</div>
 
-                  <div className="col-span-3 text-center space-y-1">
-                    <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center font-black text-xl border-4 transition-all ${match.winner === match.entry2 ? 'bg-emerald-600 border-emerald-400 text-white scale-110' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>
-                      {match.isBye ? 'Folga' : match.entry2}
+                  <div className="col-span-3 text-center space-y-2">
+                    <div className={`mx-auto w-14 h-14 rounded-full flex items-center justify-center font-black text-2xl border-4 transition-all duration-500 ${match.winner === match.entry2 ? 'bg-emerald-600 border-emerald-400 text-white scale-110 shadow-lg shadow-emerald-500/20' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                      {match.isBye ? '...' : match.entry2}
                     </div>
-                    <p className={`text-[10px] font-bold truncate ${match.winner === match.entry2 ? 'text-emerald-400' : 'text-slate-400'}`}>{match.isBye ? 'Avancou' : getEntryName(match.entry2)}</p>
-                    {!match.winner && !match.isBye && (
-                      <button onClick={() => setWinner(match.id, match.entry2!)} className="w-full text-[9px] bg-slate-800 hover:bg-emerald-600 border border-slate-700 rounded py-1 font-bold transition-all">GANHOU</button>
+                    <p className={`text-[10px] font-bold truncate px-1 transition-colors ${match.winner === match.entry2 ? 'text-emerald-400' : 'text-slate-500'}`}>{match.isBye ? 'FOLGA' : getEntryName(match.entry2)}</p>
+                    {match.winner === null && !match.isBye && (
+                      <button onClick={() => setWinner(match.id, match.entry2!)} className="w-full text-[9px] bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white border border-slate-700 hover:border-emerald-500 rounded-lg py-1.5 font-black transition-all active:scale-95">GANHOU</button>
                     )}
                   </div>
                 </div>
