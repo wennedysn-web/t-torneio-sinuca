@@ -8,9 +8,10 @@ interface Props {
   currentRound: number;
   motto?: string;
   youtubeLink?: string;
+  showLive: boolean;
 }
 
-const VisitorView: React.FC<Props> = ({ entries, matches, currentRound, motto, youtubeLink }) => {
+const VisitorView: React.FC<Props> = ({ entries, matches, currentRound, motto, youtubeLink, showLive }) => {
   const [filterRound, setFilterRound] = useState(currentRound);
 
   const getYoutubeId = (url: string) => {
@@ -44,9 +45,9 @@ const VisitorView: React.FC<Props> = ({ entries, matches, currentRound, motto, y
         <p className="text-emerald-500 text-sm italic">{motto || "Onde a tática encontra a precisão."}</p>
       </div>
 
-      {/* Live Preview Section */}
-      {videoId && (
-        <div className="max-w-4xl mx-auto space-y-4">
+      {/* Live Preview Section - VISIBILIDADE CONTROLADA PELA FLAG showLive */}
+      {videoId && showLive && (
+        <div className="max-w-4xl mx-auto space-y-4 animate-in fade-in slide-in-from-top-4 duration-1000">
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
             <PlayCircle className="w-6 h-6 text-red-500 animate-pulse" />
             Transmissão ao Vivo

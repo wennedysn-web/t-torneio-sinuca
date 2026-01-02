@@ -13,6 +13,7 @@ interface TournamentData {
   matches: Match[];
   currentRound: number;
   youtubeLink: string;
+  showLive: boolean;
 }
 
 const App: React.FC = () => {
@@ -24,12 +25,12 @@ const App: React.FC = () => {
     entries: [],
     matches: [],
     currentRound: 1,
-    youtubeLink: ''
+    youtubeLink: '',
+    showLive: true
   });
   const [motto, setMotto] = useState("Onde a tática encontra a precisão.");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Busca inicial e Real-time
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
@@ -47,7 +48,8 @@ const App: React.FC = () => {
             entries: remoteData.entries || [],
             matches: remoteData.matches || [],
             currentRound: remoteData.current_round || 1,
-            youtubeLink: remoteData.youtube_link || ''
+            youtubeLink: remoteData.youtube_link || '',
+            showLive: remoteData.show_live !== undefined ? remoteData.show_live : true
           });
         }
       } catch (err) {
@@ -72,7 +74,8 @@ const App: React.FC = () => {
               entries: newData.entries || [],
               matches: newData.matches || [],
               currentRound: newData.current_round || 1,
-              youtubeLink: newData.youtube_link || ''
+              youtubeLink: newData.youtube_link || '',
+              showLive: newData.show_live !== undefined ? newData.show_live : true
             });
           }
         }
@@ -91,19 +94,16 @@ const App: React.FC = () => {
         matches: nextData.matches,
         current_round: nextData.currentRound,
         youtube_link: nextData.youtubeLink,
+        show_live: nextData.showLive,
         last_update: new Date().toISOString()
       })
       .eq('id', 'main');
 
     if (error) {
       console.error("Erro na sincronização:", error.message);
-      if (error.code === '42703' || error.message.includes('youtube_link')) {
-        alert("⚠️ ERRO DE BANCO: A coluna 'youtube_link' não existe. Execute o SQL ALTER TABLE no painel do Supabase.");
-      }
     }
   }, []);
 
-  // Wrapper principal de atualização
   const updateData = (updater: (prev: TournamentData) => TournamentData) => {
     setData(prev => {
       const next = updater(prev);
@@ -136,8 +136,8 @@ const App: React.FC = () => {
     }));
   };
 
-  const handleUpdateYoutube = (link: string) => {
-    updateData(prev => ({ ...prev, youtubeLink: link }));
+  const handleUpdateYoutube = (link: string, show: boolean) => {
+    updateData(prev => ({ ...prev, youtubeLink: link, showLive: show }));
   };
 
   const handleGenerateTestData = () => {
@@ -173,12 +173,11 @@ const App: React.FC = () => {
       participants: [...prev.participants, ...testParticipants],
       entries: [...prev.entries, ...testEntries]
     }));
-    alert(`${testParticipants.length} jogadores de teste adicionados!`);
   };
 
   const handleResetTournament = () => {
     if (!confirm("⚠️ ATENÇÃO: Isso apagará TODOS os dados. Deseja continuar?")) return;
-    const resetData = { participants: [], entries: [], matches: [], currentRound: 1, youtubeLink: '' };
+    const resetData = { participants: [], entries: [], matches: [], currentRound: 1, youtubeLink: '', showLive: true };
     setData(resetData);
     syncWithSupabase(resetData);
   };
@@ -227,7 +226,7 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-400 font-bold animate-pulse">Sincronizando com Supabase...</p>
+          <p className="text-slate-400 font-bold animate-pulse">Sincronizando Banco de Dados...</p>
         </div>
       </div>
     );
@@ -286,6 +285,7 @@ const App: React.FC = () => {
               participants={data.participants} 
               entries={data.entries}
               youtubeLink={data.youtubeLink}
+              showLive={data.showLive}
               onAddParticipant={handleRegisterParticipant}
               onRemoveParticipant={handleRemoveParticipant}
               onEditParticipant={handleEditParticipant}
@@ -344,6 +344,7 @@ const App: React.FC = () => {
             currentRound={data.currentRound} 
             motto={motto} 
             youtubeLink={data.youtubeLink}
+            showLive={data.showLive}
           />
         )}
       </main>

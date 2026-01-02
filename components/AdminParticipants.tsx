@@ -1,15 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Participant, Entry } from '../types';
-import { Plus, Trash2, UserPlus, Database, Edit2, Check, X, User, Sparkles, Youtube, Save } from 'lucide-react';
+import { Plus, Trash2, UserPlus, Database, Edit2, Check, X, User, Sparkles, Youtube, Save, Eye, EyeOff } from 'lucide-react';
 
 interface Props {
   participants: Participant[];
   entries: Entry[];
   youtubeLink?: string;
+  showLive: boolean;
   onAddParticipant: (p: Participant, e: Entry[]) => void;
   onRemoveParticipant: (id: string) => void;
   onEditParticipant: (id: string, name: string) => void;
-  onUpdateYoutube: (link: string) => void;
+  onUpdateYoutube: (link: string, show: boolean) => void;
   onGenerateTestData: () => void;
 }
 
@@ -17,6 +18,7 @@ const AdminParticipants: React.FC<Props> = ({
   participants, 
   entries, 
   youtubeLink = '',
+  showLive,
   onAddParticipant, 
   onRemoveParticipant, 
   onEditParticipant,
@@ -28,10 +30,15 @@ const AdminParticipants: React.FC<Props> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [ytInput, setYtInput] = useState(youtubeLink);
+  const [showLiveLocal, setShowLiveLocal] = useState(showLive);
 
   useEffect(() => {
     setYtInput(youtubeLink);
   }, [youtubeLink]);
+
+  useEffect(() => {
+    setShowLiveLocal(showLive);
+  }, [showLive]);
 
   const generateId = () => Math.random().toString(36).substring(2) + Date.now().toString(36);
 
@@ -64,8 +71,8 @@ const AdminParticipants: React.FC<Props> = ({
 
   const handleYtSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdateYoutube(ytInput);
-    alert("Link do YouTube atualizado com sucesso!");
+    onUpdateYoutube(ytInput.trim(), showLiveLocal);
+    alert("Configurações da Transmissão atualizadas!");
   };
 
   const saveEdit = () => {
@@ -103,7 +110,7 @@ const AdminParticipants: React.FC<Props> = ({
           {/* YouTube Live Section */}
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-red-500">
-              <Youtube className="w-5 h-5" /> Link da Live
+              <Youtube className="w-5 h-5" /> Configurar Transmissão
             </h3>
             <form onSubmit={handleYtSubmit} className="space-y-4">
               <div>
@@ -116,8 +123,24 @@ const AdminParticipants: React.FC<Props> = ({
                   placeholder="https://www.youtube.com/watch?v=..." 
                 />
               </div>
-              <button type="submit" className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2">
-                <Save className="w-4 h-4" /> Atualizar Live
+
+              <label className="flex items-center gap-3 cursor-pointer p-3 bg-slate-800/50 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={showLiveLocal} 
+                  onChange={(e) => setShowLiveLocal(e.target.checked)}
+                  className="w-5 h-5 rounded border-slate-600 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900 bg-slate-700"
+                />
+                <div className="flex items-center gap-2">
+                  {showLiveLocal ? <Eye className="w-4 h-4 text-emerald-400" /> : <EyeOff className="w-4 h-4 text-slate-500" />}
+                  <span className={`text-sm font-bold ${showLiveLocal ? 'text-white' : 'text-slate-500'}`}>
+                    Exibir para visitantes
+                  </span>
+                </div>
+              </label>
+
+              <button type="submit" className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/20">
+                <Save className="w-4 h-4" /> Salvar Alterações
               </button>
             </form>
           </div>

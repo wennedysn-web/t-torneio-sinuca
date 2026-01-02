@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Participant, Entry, Match } from '../types';
-import { Swords, Trophy, Play, CheckCircle2, ChevronRight, Hash, Trash2, ArrowRightLeft, Sparkles, RotateCcw, XCircle } from 'lucide-react';
+import { Swords, Trophy, Play, CheckCircle2, ChevronRight, Hash, Trash2, ArrowRightLeft, Sparkles, RotateCcw, XCircle, AlertCircle } from 'lucide-react';
 
 interface Props {
   participants: Participant[];
@@ -60,6 +60,42 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
     if (!entry1 || !entry2) {
       alert("Inscrição não encontrada na lista de disponíveis para esta rodada.");
       return;
+    }
+
+    // REGRA DE AUTOCONFRONTO
+    if (entry1.participantId === entry2.participantId) {
+      if (currentRound === 1) {
+        alert(`⚠️ AUTOCONFRONTO DETECTADO: ${entry1.participantName} (#${num1}) e (#${num2}) são o mesmo competidor. Na Rodada 1 isso NÃO é permitido. Por favor, realize um novo sorteio da última bola sorteada.`);
+        return;
+      } else {
+        // Rodada 2 ou mais: O de maior numeração ganha automaticamente
+        const autoWinner = num1 > num2 ? num1 : num2;
+        const autoLoser = num1 > num2 ? num2 : num1;
+        
+        if (confirm(`⚠️ AUTOCONFRONTO (Rodada ${currentRound}): ${entry1.participantName} se enfrentou. Pela regra, a inscrição de maior numeração (#${autoWinner}) será declarada vencedora automaticamente. Confirmar?`)) {
+          const newMatch: Match = {
+            id: generateId(),
+            round: currentRound,
+            entry1: num1,
+            entry2: num2,
+            winner: autoWinner,
+            isBye: false,
+            timestamp: Date.now()
+          };
+          
+          setMatches(prev => [...prev, newMatch]);
+          setEntries(prev => prev.map(e => {
+            if (e.number === autoWinner) return { ...e, currentRound: currentRound + 1 };
+            if (e.number === autoLoser) return { ...e, status: 'eliminated' };
+            return e;
+          }));
+          setInput1('');
+          setInput2('');
+          return;
+        } else {
+          return;
+        }
+      }
     }
 
     const newMatch: Match = {
@@ -225,6 +261,16 @@ const AdminMatches: React.FC<Props> = ({ participants, entries, setEntries, matc
                 </div>
                 <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-all">Emparelhar</button>
              </form>
+          </div>
+          
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+            <h4 className="text-[10px] font-black uppercase text-amber-500 flex items-center gap-1.5 mb-2">
+              <AlertCircle className="w-3 h-3" /> Regra de Autoconfronto
+            </h4>
+            <ul className="text-[9px] text-slate-400 space-y-1.5 list-disc pl-3">
+              <li><b>Rodada 1:</b> Proibido se enfrentar. Refazer o sorteio da última bola.</li>
+              <li><b>Rodada 2+:</b> Permitido. A bola de <b>maior numeração</b> avança automaticamente.</li>
+            </ul>
           </div>
         </div>
 
