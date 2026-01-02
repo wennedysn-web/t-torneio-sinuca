@@ -13,6 +13,8 @@ export interface Entry {
   currentRound: number;
 }
 
+export type MatchStatus = 'pending' | 'in-progress' | 'finished';
+
 export interface Match {
   id: string;
   round: number;
@@ -21,6 +23,8 @@ export interface Match {
   winner: number | null;
   isBye: boolean;
   timestamp: number;
+  status: MatchStatus;
+  isVisible: boolean;
 }
 
 export type AppView = 'visitor' | 'admin-login' | 'admin-participants' | 'admin-matches';
