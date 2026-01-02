@@ -1,11 +1,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { AppView, Participant, Entry, Match, TournamentEvent, MatchStatus } from './types.ts';
-import { Trophy, Users, Swords, LogIn, LogOut, LayoutDashboard, AlertTriangle, RefreshCcw, Trash2, ClipboardList, Bell } from 'lucide-react';
+import { Trophy, Users, Swords, LogIn, LogOut, LayoutDashboard, AlertTriangle, RefreshCcw, Trash2, ClipboardList, Bell, Eraser } from 'lucide-react';
 import AdminParticipants from './components/AdminParticipants.tsx';
 import AdminMatches from './components/AdminMatches.tsx';
 import VisitorView from './components/VisitorView.tsx';
-import { GoogleGenAI } from "@google/genai";
 import { supabase } from './lib/supabase.ts';
 
 interface TournamentData {
@@ -121,7 +120,7 @@ const App: React.FC = () => {
     
     updateData(prev => ({
       ...prev,
-      events: [newEvent, ...prev.events].slice(0, 100) // Mantém os últimos 100 logs
+      events: [newEvent, ...prev.events].slice(0, 100)
     }));
   };
 
@@ -166,10 +165,34 @@ const App: React.FC = () => {
   };
 
   const handleResetTournament = () => {
-    if (!confirm("⚠️ ATENÇÃO: Isso apagará TODOS os dados. Deseja continuar?")) return;
+    if (!confirm("⚠️ ATENÇÃO: Isso apagará TODOS os dados (Participantes, Jogos e Logs). Deseja continuar?")) return;
     const resetData = { participants: [], entries: [], matches: [], currentRound: 1, youtubeLink: '', showLive: true, events: [] };
     setData(resetData);
     syncWithSupabase(resetData);
+    alert("Todos os dados foram apagados!");
+  };
+
+  const handleResetRounds = () => {
+    if (!confirm("Deseja resetar todas as rodadas? Isso manterá os participantes mas apagará todos os confrontos, voltando para a Rodada 1.")) return;
+    updateData(prev => ({
+      ...prev,
+      currentRound: 1,
+      matches: [],
+      entries: prev.entries.map(e => ({ ...e, status: 'active' as const, currentRound: 1 })),
+      events: [{
+        id: Math.random().toString(36).substring(7),
+        type: 'match-pending',
+        message: "O Torneio foi resetado para a Rodada 1!",
+        timestamp: Date.now()
+      }, ...prev.events]
+    }));
+    alert("Rodadas resetadas com sucesso!");
+  };
+
+  const handleClearLogs = () => {
+    if (!confirm("Deseja limpar todo o histórico de logs de eventos?")) return;
+    updateData(prev => ({ ...prev, events: [] }));
+    alert("Log de eventos limpo!");
   };
 
   const handleUpdateMatchStatus = (matchId: string, newStatus: MatchStatus) => {
@@ -184,16 +207,14 @@ const App: React.FC = () => {
       const logType = newStatus === 'in-progress' ? 'match-progress' : 
                       newStatus === 'pending' ? 'match-pending' : 'match-finished';
       
-      const logMsg = newStatus === 'in-progress' ? `Confronto em Andamento: ${names}` :
-                     newStatus === 'pending' ? `Confronto em Espera: ${names}` : `Confronto Finalizado: ${names}`;
+      const logMsg = newStatus === 'in-progress' ? `Em Andamento: ${names}` :
+                     newStatus === 'pending' ? `Em Espera: ${names}` : `Finalizado: ${names}`;
 
-      // Envia o log
       const newEvent: TournamentEvent = {
         id: Math.random().toString(36).substring(7),
         type: logType as any,
         message: logMsg,
-        timestamp: Date.now(),
-        details: { names }
+        timestamp: Date.now()
       };
 
       return {
@@ -213,14 +234,13 @@ const App: React.FC = () => {
       const winnerEntry = prev.entries.find(e => e.number === winnerNumber);
       const loserEntry = prev.entries.find(e => e.number === loserNumber);
       
-      const logMsg = `Finalizado: ${winnerEntry?.participantName} venceu ${loserEntry?.participantName || 'BYE'}`;
+      const logMsg = `Ganhador: ${winnerEntry?.participantName} (#${winnerNumber}) venceu ${loserEntry?.participantName || 'BYE'}`;
       
       const newEvent: TournamentEvent = {
         id: Math.random().toString(36).substring(7),
         type: 'match-finished',
         message: logMsg,
-        timestamp: Date.now(),
-        details: { winner: winnerEntry?.participantName, winnerNum: winnerNumber }
+        timestamp: Date.now()
       };
 
       const nextMatches = prev.matches.map(m => m.id === matchId ? { ...m, winner: winnerNumber, status: 'finished' as const } : m);
@@ -248,9 +268,8 @@ const App: React.FC = () => {
        const newEvent: TournamentEvent = {
          id: Math.random().toString(36).substring(7),
          type: 'match-pending',
-         message: `Confronto Criado: ${names}`,
-         timestamp: Date.now(),
-         details: { names }
+         message: `Sorteado: ${names}`,
+         timestamp: Date.now()
        };
 
        return {
@@ -333,47 +352,50 @@ const App: React.FC = () => {
         )}
 
         {view === 'admin-participants' && (
-          <div className="space-y-12">
-            <AdminParticipants 
-              participants={data.participants} 
-              entries={data.entries}
-              youtubeLink={data.youtubeLink}
-              showLive={data.showLive}
-              onAddParticipant={handleRegisterParticipant}
-              onRemoveParticipant={handleRemoveParticipant}
-              onEditParticipant={handleEditParticipant}
-              onUpdateYoutube={handleUpdateYoutube}
-              onGenerateTestData={() => {}}
-            />
-          </div>
+          <AdminParticipants 
+            participants={data.participants} 
+            entries={data.entries}
+            youtubeLink={data.youtubeLink}
+            showLive={data.showLive}
+            onAddParticipant={handleRegisterParticipant}
+            onRemoveParticipant={handleRemoveParticipant}
+            onEditParticipant={handleEditParticipant}
+            onUpdateYoutube={handleUpdateYoutube}
+            onGenerateTestData={() => {}}
+            onResetAll={handleResetTournament}
+          />
         )}
 
         {view === 'admin-matches' && (
-          <div className="space-y-12">
-            <AdminMatches 
-              participants={data.participants}
-              entries={data.entries}
-              setEntries={() => {}} // Não usado mais diretamente, centralizado via handlers no App
-              matches={data.matches}
-              setMatches={() => {}} // Centralizado
-              currentRound={data.currentRound}
-              setCurrentRound={(val: any) => updateData(prev => ({ ...prev, currentRound: typeof val === 'function' ? val(prev.currentRound) : val }))}
-              // Injeção de novos handlers com log
-              onStatusUpdate={handleUpdateMatchStatus}
-              onWinnerSet={handleSetWinner}
-              onMatchCreate={handleCreateMatch}
-              onMatchDelete={(id) => updateData(prev => ({ ...prev, matches: prev.matches.filter(m => m.id !== id) }))}
-              onMatchReset={(id) => updateData(prev => ({ ...prev, matches: prev.matches.map(m => m.id === id ? { ...m, winner: null, status: 'in-progress' } : m) }))}
-              onToggleVisibility={(id) => updateData(prev => ({ ...prev, matches: prev.matches.map(m => m.id === id ? { ...m, isVisible: !m.isVisible } : m) }))}
-            />
-          </div>
+          <AdminMatches 
+            participants={data.participants}
+            entries={data.entries}
+            matches={data.matches}
+            currentRound={data.currentRound}
+            setCurrentRound={(val: any) => updateData(prev => ({ ...prev, currentRound: typeof val === 'function' ? val(prev.currentRound) : val }))}
+            onStatusUpdate={handleUpdateMatchStatus}
+            onWinnerSet={handleSetWinner}
+            onMatchCreate={handleCreateMatch}
+            onMatchDelete={(id) => updateData(prev => ({ ...prev, matches: prev.matches.filter(m => m.id !== id) }))}
+            onMatchReset={(id) => updateData(prev => ({ ...prev, matches: prev.matches.map(m => m.id === id ? { ...m, winner: null, status: 'in-progress' } : m) }))}
+            onToggleVisibility={(id) => updateData(prev => ({ ...prev, matches: prev.matches.map(m => m.id === id ? { ...m, isVisible: !m.isVisible } : m) }))}
+            onResetRounds={handleResetRounds}
+          />
         )}
 
         {view === 'admin-logs' && (
           <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex items-center gap-3">
-              <ClipboardList className="w-8 h-8 text-emerald-500" />
-              <h2 className="text-3xl font-black text-white">Log de Eventos</h2>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <ClipboardList className="w-8 h-8 text-emerald-500" />
+                <h2 className="text-3xl font-black text-white">Log de Eventos</h2>
+              </div>
+              <button 
+                onClick={handleClearLogs}
+                className="flex items-center gap-2 bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/30 px-4 py-2 rounded-lg text-sm font-bold transition-all"
+              >
+                <Eraser className="w-4 h-4" /> Limpar Log de Eventos
+              </button>
             </div>
             <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
               <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
