@@ -2,7 +2,7 @@
 export interface Participant {
   id: string;
   name: string;
-  entryNumbers: number[]; // Max 3, between 1-200
+  entryNumbers: number[]; 
 }
 
 export interface Entry {
@@ -27,7 +27,15 @@ export interface Match {
   isVisible: boolean;
 }
 
-export type AppView = 'visitor' | 'admin-login' | 'admin-participants' | 'admin-matches';
+export interface TournamentEvent {
+  id: string;
+  type: 'registration' | 'match-pending' | 'match-progress' | 'match-finished';
+  message: string;
+  timestamp: number;
+  details?: any;
+}
+
+export type AppView = 'visitor' | 'admin-login' | 'admin-participants' | 'admin-matches' | 'admin-logs';
 
 export interface TournamentState {
   participants: Participant[];
@@ -35,4 +43,5 @@ export interface TournamentState {
   matches: Match[];
   currentRound: number;
   isAdmin: boolean;
+  events: TournamentEvent[];
 }

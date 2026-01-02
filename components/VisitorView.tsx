@@ -1,8 +1,7 @@
 
-import React, { useMemo, useState } from 'react';
-import { Entry, Match, MatchStatus } from '../types';
-// Fixed: Removed 'Star' from lucide-react imports to avoid conflict with local definition below
-import { Trophy, Swords, User, History, Medal, PlayCircle, Clock, CheckCircle2 } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Entry, Match, MatchStatus, TournamentEvent } from '../types';
+import { Trophy, Swords, User, History, Medal, PlayCircle, Clock, CheckCircle2, Bell, Star } from 'lucide-react';
 
 interface Props {
   entries: Entry[];
@@ -11,10 +10,27 @@ interface Props {
   motto?: string;
   youtubeLink?: string;
   showLive: boolean;
+  events: TournamentEvent[];
 }
 
-const VisitorView: React.FC<Props> = ({ entries, matches, currentRound, motto, youtubeLink, showLive }) => {
+const VisitorView: React.FC<Props> = ({ entries, matches, currentRound, motto, youtubeLink, showLive, events }) => {
   const [filterRound, setFilterRound] = useState(currentRound);
+  const [lastNotification, setLastNotification] = useState<TournamentEvent | null>(null);
+  const [showToast, setShowToast] = useState(false);
+
+  // Monitora novos eventos para exibir o Toast
+  useEffect(() => {
+    if (events.length > 0) {
+      const latest = events[0];
+      // Verifica se o evento é recente (últimos 10 segundos)
+      if (Date.now() - latest.timestamp < 10000) {
+        setLastNotification(latest);
+        setShowToast(true);
+        const timer = setTimeout(() => setShowToast(false), 6000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [events]);
 
   const getYoutubeId = (url: string) => {
     if (!url) return null;
@@ -25,14 +41,8 @@ const VisitorView: React.FC<Props> = ({ entries, matches, currentRound, motto, y
 
   const videoId = useMemo(() => getYoutubeId(youtubeLink || ''), [youtubeLink]);
 
-  // Sort: In-progress -> Pending -> Finished
   const sortedAndFilteredMatches = useMemo(() => {
-    const statusOrder: Record<MatchStatus, number> = {
-      'in-progress': 0,
-      'pending': 1,
-      'finished': 2
-    };
-
+    const statusOrder: Record<MatchStatus, number> = { 'in-progress': 0, 'pending': 1, 'finished': 2 };
     return matches
       .filter(m => m.round === filterRound && m.isVisible)
       .sort((a, b) => {
@@ -43,10 +53,7 @@ const VisitorView: React.FC<Props> = ({ entries, matches, currentRound, motto, y
       });
   }, [matches, filterRound]);
 
-  const activePlayers = useMemo(() => {
-    return entries.filter(e => e.status === 'active');
-  }, [entries]);
-
+  const activePlayers = useMemo(() => entries.filter(e => e.status === 'active'), [entries]);
   const rounds = Array.from({ length: currentRound }, (_, i) => i + 1);
 
   const getEntryName = (num: number | null) => {
@@ -82,7 +89,33 @@ const VisitorView: React.FC<Props> = ({ entries, matches, currentRound, motto, y
   };
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-700">
+    <div className="space-y-12 animate-in fade-in duration-700 relative">
+      
+      {/* JANELINHA DE NOTIFICAÇÃO (TOAST) */}
+      <div className={`fixed top-20 right-4 z-[100] transition-all duration-500 transform ${showToast ? 'translate-x-0 opacity-100' : 'translate-x-12 opacity-0 pointer-events-none'}`}>
+        {lastNotification && (
+          <div className={`flex items-center gap-4 p-4 rounded-2xl border-2 shadow-2xl max-w-xs ${
+            lastNotification.type === 'registration' ? 'bg-blue-900/90 border-blue-500/50' :
+            lastNotification.type === 'match-progress' ? 'bg-amber-900/90 border-amber-500/50' :
+            lastNotification.type === 'match-finished' ? 'bg-emerald-900/90 border-emerald-500/50' :
+            'bg-slate-900/90 border-slate-500/50'
+          } backdrop-blur-xl`}>
+            <div className={`p-2 rounded-xl ${
+              lastNotification.type === 'registration' ? 'bg-blue-500 text-white' :
+              lastNotification.type === 'match-progress' ? 'bg-amber-500 text-white' :
+              lastNotification.type === 'match-finished' ? 'bg-emerald-500 text-white' :
+              'bg-slate-500 text-white'
+            }`}>
+               <Bell className="w-5 h-5 animate-bounce" />
+            </div>
+            <div>
+              <p className="text-white font-black text-sm">{lastNotification.message}</p>
+              <p className="text-[9px] text-slate-300 font-medium uppercase mt-1 tracking-widest">Aconteceu agora</p>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="py-8 px-4 text-center border-b border-emerald-900/20 bg-emerald-900/5 -mx-4 -mt-8 mb-8">
         <h2 className="text-3xl font-black mb-2 text-white">Torneio de Sinuca Online</h2>
         <p className="text-emerald-500 text-sm font-medium italic">{motto}</p>
@@ -101,23 +134,9 @@ const VisitorView: React.FC<Props> = ({ entries, matches, currentRound, motto, y
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl">
-          <Swords className="w-10 h-10 text-emerald-500 mb-3" />
-          <p className="text-slate-500 text-xs font-black uppercase">Ativos</p>
-          <p className="text-4xl font-black text-white">{activePlayers.length}</p>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl">
-          <Trophy className="w-10 h-10 text-amber-500 mb-3" />
-          <p className="text-slate-500 text-xs font-black uppercase">Rodada</p>
-          <p className="text-4xl font-black text-white">{currentRound}</p>
-        </div>
-        <div className="bg-emerald-900/20 border border-emerald-500/30 p-6 rounded-3xl shadow-xl">
-          <Medal className="w-10 h-10 text-emerald-400 mb-3" />
-          <p className="text-emerald-400 text-xs font-black uppercase">Campeão</p>
-          <p className="text-lg font-bold text-white leading-tight">
-            {activePlayers.length === 1 ? activePlayers[0].participantName : "Em disputa..."}
-          </p>
-        </div>
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl"><Swords className="w-10 h-10 text-emerald-500 mb-3" /><p className="text-slate-500 text-xs font-black uppercase">Ativos</p><p className="text-4xl font-black text-white">{activePlayers.length}</p></div>
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl"><Trophy className="w-10 h-10 text-amber-500 mb-3" /><p className="text-slate-500 text-xs font-black uppercase">Rodada</p><p className="text-4xl font-black text-white">{currentRound}</p></div>
+        <div className="bg-emerald-900/20 border border-emerald-500/30 p-6 rounded-3xl shadow-xl"><Medal className="w-10 h-10 text-emerald-400 mb-3" /><p className="text-emerald-400 text-xs font-black uppercase">Campeão</p><p className="text-lg font-bold text-white">{activePlayers.length === 1 ? activePlayers[0].participantName : "Em disputa..."}</p></div>
       </div>
 
       <div className="space-y-6">
@@ -140,30 +159,20 @@ const VisitorView: React.FC<Props> = ({ entries, matches, currentRound, motto, y
                   <span className="text-[10px] font-black text-slate-600 uppercase tracking-tighter">Mesa {match.timestamp.toString().slice(-3)}</span>
                   <StatusBadge status={match.status} />
                 </div>
-                
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex flex-col items-center gap-3 flex-1">
-                    <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-black border-4 shadow-xl transition-all ${match.winner === match.entry1 ? 'bg-emerald-600 border-emerald-400 text-white scale-110' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>
-                      {match.entry1}
-                    </div>
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-black border-4 shadow-xl transition-all ${match.winner === match.entry1 ? 'bg-emerald-600 border-emerald-400 text-white scale-110' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>{match.entry1}</div>
                     <span className={`text-[11px] font-black text-center truncate w-full ${match.winner === match.entry1 ? 'text-emerald-400' : 'text-slate-400'}`}>{getEntryName(match.entry1)}</span>
                   </div>
-
                   <div className="text-slate-800 font-black text-xs italic">VS</div>
-
                   <div className="flex flex-col items-center gap-3 flex-1">
-                    <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-black border-4 shadow-xl transition-all ${match.winner === match.entry2 ? 'bg-emerald-600 border-emerald-400 text-white scale-110' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>
-                      {match.isBye ? '...' : match.entry2}
-                    </div>
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-black border-4 shadow-xl transition-all ${match.winner === match.entry2 ? 'bg-emerald-600 border-emerald-400 text-white scale-110' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>{match.isBye ? '...' : match.entry2}</div>
                     <span className={`text-[11px] font-black text-center truncate w-full ${match.winner === match.entry2 ? 'text-emerald-400' : 'text-slate-400'}`}>{match.isBye ? 'Folga' : getEntryName(match.entry2)}</span>
                   </div>
                 </div>
-
                 {match.winner && !match.isBye && (
                   <div className="mt-6 pt-4 border-t border-slate-800 text-center animate-in fade-in zoom-in">
-                    <div className="text-emerald-400 font-black text-[10px] uppercase flex items-center justify-center gap-1.5">
-                      <Star className="w-3 h-3 fill-emerald-400" /> Vencedor: {getEntryName(match.winner)}
-                    </div>
+                    <div className="text-emerald-400 font-black text-[10px] uppercase flex items-center justify-center gap-1.5"><Star className="w-3 h-3 fill-emerald-400" /> Ganhador: {getEntryName(match.winner)}</div>
                   </div>
                 )}
               </div>
@@ -171,27 +180,8 @@ const VisitorView: React.FC<Props> = ({ entries, matches, currentRound, motto, y
           )}
         </div>
       </div>
-
-      <div className="bg-slate-900/60 rounded-3xl p-8 border border-slate-800">
-        <h3 className="text-xl font-black text-white mb-6 flex items-center gap-2"><User className="w-6 h-6 text-emerald-500" /> Mesa de Inscritos Ativos</h3>
-        <div className="flex flex-wrap gap-2.5">
-          {activePlayers.sort((a,b) => a.number - b.number).map(entry => (
-            <div key={entry.number} className="bg-slate-800/40 px-3 py-1.5 rounded-xl border border-slate-700/50 flex items-center gap-2.5">
-              <span className="bg-emerald-600/20 text-emerald-400 text-[10px] font-black px-1.5 py-0.5 rounded-lg border border-emerald-500/20">#{entry.number}</span>
-              <span className="text-[11px] font-bold text-slate-400">{entry.participantName}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };
-
-// Fixed: This component local declaration remains, providing the custom SVG star
-const Star = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-    <path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279-7.416-3.967-7.417 3.967 1.481-8.279-6.064-5.828 8.332-1.151z"/>
-  </svg>
-);
 
 export default VisitorView;
