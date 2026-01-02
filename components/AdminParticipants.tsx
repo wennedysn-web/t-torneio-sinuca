@@ -87,9 +87,14 @@ const AdminParticipants: React.FC<Props> = ({
           Participantes e Setup
         </h2>
         <div className="flex items-center gap-3">
-          <button onClick={onGenerateTestData} className="hidden md:flex items-center gap-2 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-600/30 px-4 py-2 rounded-lg text-sm font-bold transition-all"><Sparkles className="w-4 h-4" /> Teste</button>
-          <div className="bg-slate-900 border border-slate-800 px-4 py-2 rounded-lg text-sm font-medium text-slate-400">
-            <span className="text-emerald-400 font-bold">{entries.length}</span> / 200 BOLAS
+          <button 
+            onClick={onGenerateTestData} 
+            className="flex items-center gap-2 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-600/30 px-4 py-2 rounded-lg text-xs font-black transition-all shadow-lg active:scale-95"
+          >
+            <Sparkles className="w-4 h-4" /> Gerar Teste (30 Jogadores)
+          </button>
+          <div className="bg-slate-900 border border-slate-800 px-4 py-2 rounded-lg text-sm font-black text-slate-400">
+            <span className="text-emerald-400 font-black">{entries.length}</span> / 200 BOLAS
           </div>
         </div>
       </div>
@@ -97,52 +102,52 @@ const AdminParticipants: React.FC<Props> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-red-500"><Youtube className="w-5 h-5" /> Transmissão</h3>
+            <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-red-500"><Youtube className="w-5 h-5" /> Transmissão</h3>
             <form onSubmit={handleYtSubmit} className="space-y-4">
-              <input type="url" value={ytInput} onChange={(e) => setYtInput(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-red-500 outline-none text-sm" placeholder="URL do YouTube..." />
+              <input type="url" value={ytInput} onChange={(e) => setYtInput(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-red-500 outline-none text-sm font-medium" placeholder="URL do YouTube..." />
               <label className="flex items-center gap-3 cursor-pointer p-3 bg-slate-800/50 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors">
                 <input type="checkbox" checked={showLiveLocal} onChange={(e) => setShowLiveLocal(e.target.checked)} className="w-5 h-5 rounded border-slate-600 text-emerald-500 bg-slate-700" />
-                <span className={`text-sm font-bold ${showLiveLocal ? 'text-white' : 'text-slate-500'}`}>Exibir para visitantes</span>
+                <span className={`text-xs font-black uppercase ${showLiveLocal ? 'text-white' : 'text-slate-500'}`}>Exibir para visitantes</span>
               </label>
-              <button type="submit" className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2">Salvar</button>
+              <button type="submit" className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3 rounded-lg transition-all flex items-center justify-center gap-2 uppercase text-xs shadow-lg">Salvar Configurações</button>
             </form>
           </div>
 
           <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-emerald-400"><Plus className="w-5 h-5" /> Cadastro</h3>
+            <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-emerald-400"><Plus className="w-5 h-5" /> Cadastro</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Nome do Jogador" required />
-              <input type="text" value={entryInput} onChange={(e) => setEntryInput(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Números: 1, 15, 88" required />
-              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg shadow-lg">Cadastrar</button>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium" placeholder="Nome do Jogador" required />
+              <input type="text" value={entryInput} onChange={(e) => setEntryInput(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium" placeholder="Números (ex: 1, 15, 88)" required />
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-lg shadow-lg uppercase text-xs">Cadastrar Participante</button>
             </form>
           </div>
 
           <div className="bg-red-900/10 p-6 rounded-2xl border border-red-900/30 shadow-xl">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-red-500"><AlertTriangle className="w-5 h-5" /> Manutenção</h3>
-            <button onClick={onResetAll} className="w-full bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/30 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2">
-              <Trash2 className="w-4 h-4" /> Limpar todos os Dados
+            <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-red-500"><AlertTriangle className="w-5 h-5" /> Manutenção Crítica</h3>
+            <button onClick={onResetAll} className="w-full bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/30 font-black py-3 rounded-xl transition-all flex items-center justify-center gap-2 uppercase text-[10px] tracking-widest">
+              <Trash2 className="w-4 h-4" /> Limpar todos os Dados deste Ano
             </button>
           </div>
         </div>
 
         <div className="lg:col-span-2 space-y-4">
-          <h3 className="text-lg font-bold text-slate-300 px-2 flex items-center gap-2"><User className="w-5 h-5 text-emerald-500" /> Inscritos ({participants.length})</h3>
+          <h3 className="text-sm font-black uppercase tracking-widest text-slate-300 px-2 flex items-center gap-2"><User className="w-5 h-5 text-emerald-500" /> Inscritos ({participants.length})</h3>
           <div className="grid gap-3 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
             {participants.length === 0 ? (
-              <div className="py-20 text-center bg-slate-900/50 rounded-2xl border-2 border-dashed border-slate-800 text-slate-500">Nenhum jogador cadastrado.</div>
+              <div className="py-20 text-center bg-slate-900/50 rounded-2xl border-2 border-dashed border-slate-800 text-slate-500 font-bold uppercase text-xs tracking-widest">Nenhum jogador cadastrado.</div>
             ) : (
               [...participants].reverse().map(p => (
-                <div key={p.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex justify-between items-center group transition-all">
+                <div key={p.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex justify-between items-center group transition-all hover:bg-slate-800/80">
                   <div className="flex-1">
                     {editingId === p.id ? (
                       <div className="flex items-center gap-2">
-                        <input value={editingName} onChange={(e) => setEditingName(e.target.value)} className="bg-slate-800 border border-emerald-500 rounded px-2 py-1 text-sm text-white outline-none w-full max-w-xs" autoFocus />
+                        <input value={editingName} onChange={(e) => setEditingName(e.target.value)} className="bg-slate-800 border border-emerald-500 rounded px-2 py-1 text-sm text-white outline-none w-full max-w-xs font-bold" autoFocus />
                         <button onClick={saveEdit} className="p-1 text-emerald-400 hover:bg-emerald-400/10 rounded"><Check className="w-4 h-4" /></button>
                         <button onClick={() => setEditingId(null)} className="p-1 text-red-400 hover:bg-red-400/10 rounded"><X className="w-4 h-4" /></button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-3">
-                        <p className="font-bold text-white group-hover:text-emerald-400 transition-colors">{p.name}</p>
+                        <p className="font-black text-white group-hover:text-emerald-400 transition-colors uppercase text-sm">{p.name}</p>
                         <div className="flex gap-1">
                           {p.entryNumbers.map(num => (
                             <span key={num} className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">#{String(num).padStart(3, '0')}</span>
@@ -151,7 +156,7 @@ const AdminParticipants: React.FC<Props> = ({
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => { setEditingId(p.id); setEditingName(p.name); }} className="p-2 text-slate-400 hover:text-blue-400 rounded-lg"><Edit2 className="w-4 h-4" /></button>
                     <button onClick={() => { if(confirm("Remover este jogador?")) onRemoveParticipant(p.id); }} className="p-2 text-slate-400 hover:text-red-400 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                   </div>

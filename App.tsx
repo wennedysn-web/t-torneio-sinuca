@@ -36,7 +36,6 @@ const App: React.FC = () => {
   const [motto, setMotto] = useState("Onde a tática encontra a precisão.");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Carrega dados baseados no ano selecionado
   useEffect(() => {
     const fetchYearData = async () => {
       setIsLoading(true);
@@ -60,7 +59,6 @@ const App: React.FC = () => {
             events: remoteData.events || []
           });
         } else {
-          // Se não houver dados para o ano, inicializa zerado
           setData({
             participants: [],
             entries: [],
@@ -80,7 +78,6 @@ const App: React.FC = () => {
 
     fetchYearData();
 
-    // Inscrição em tempo real para o ID do ano selecionado
     const channel = supabase
       .channel(`tournament_${selectedYear}`)
       .on(
@@ -107,7 +104,6 @@ const App: React.FC = () => {
   }, [selectedYear]);
 
   const syncWithSupabase = useCallback(async (nextData: TournamentData) => {
-    // Tenta fazer o update, se falhar por não existir (upsert), cria o registro do ano
     const { error } = await supabase
       .from('tournaments')
       .upsert({
@@ -120,10 +116,13 @@ const App: React.FC = () => {
         show_live: nextData.showLive,
         events: nextData.events,
         last_update: new Date().toISOString()
-      });
+      }, { onConflict: 'id' });
 
     if (error) {
       console.error("Erro na sincronização:", error.message);
+      if (error.message.includes('row-level security')) {
+        alert("ERRO DE SEGURANÇA: O Supabase bloqueou a gravação. \n\nPor favor, execute o seguinte comando no SQL Editor do Supabase para liberar o acesso:\n\nALTER TABLE tournaments ENABLE ROW LEVEL SECURITY;\nCREATE POLICY \"Enable access for all\" ON public.tournaments FOR ALL TO anon USING (true) WITH CHECK (true);");
+      }
     }
   }, [selectedYear]);
 
@@ -135,16 +134,72 @@ const App: React.FC = () => {
     });
   };
 
+  const handleGenerateTestData = () => {
+    const names = [
+      "Beto Cachaça", "Zezinho da 8", "Mestre Baiano", "Paulo Jacaré", "Ricardinho", 
+      "Gordo do Taco", "Chico Tripa", "Luan Sniper", "Tico-Tico", "Cabelo",
+      "Marcos Giz", "Sandro Sete", "Juninho Ouro", "Bira", "Djalma",
+      "Vavá", "Neném", "Zico do Bar", "Tião Galinha", "Renato",
+      "Dudu", "Fabio Sola", "Geraldo", "Ítalo", "Jair",
+      "Kléber", "Léo", "Mário", "Nivaldo", "Otávio"
+    ];
+
+    const usedNumbers = new Set(data.entries.map(e => e.number));
+    const newParticipants: Participant[] = [];
+    const newEntries: Entry[] = [];
+
+    // Tenta gerar 30 participantes
+    for (let i = 0; i < names.length; i++) {
+      const pId = Math.random().toString(36).substring(2, 10);
+      const pName = names[i];
+      
+      let num = -1;
+      let attempts = 0;
+      while (attempts < 500) {
+        const candidate = Math.floor(Math.random() * 200) + 1;
+        if (!usedNumbers.has(candidate)) {
+          num = candidate;
+          usedNumbers.add(num);
+          break;
+        }
+        attempts++;
+      }
+      
+      if (num !== -1) {
+        newParticipants.push({ id: pId, name: pName, entryNumbers: [num] });
+        newEntries.push({
+          number: num,
+          participantId: pId,
+          participantName: pName,
+          status: 'active',
+          currentRound: 1
+        });
+      }
+    }
+
+    updateData(prev => ({
+      ...prev,
+      participants: [...prev.participants, ...newParticipants],
+      entries: [...prev.entries, ...newEntries],
+      events: [{
+        id: Math.random().toString(36).substring(7),
+        type: 'registration' as const,
+        message: `Carga de Teste: ${newParticipants.length} jogadores em ${selectedYear}`,
+        timestamp: Date.now()
+      }, ...prev.events].slice(0, 100)
+    }));
+    alert(`${newParticipants.length} jogadores de teste adicionados à temporada ${selectedYear}!`);
+  };
+
   const handleRegisterParticipant = (participant: Participant, newEntries: Entry[]) => {
     updateData(prev => ({
       ...prev,
       participants: [...prev.participants, participant],
       entries: [...prev.entries, ...newEntries],
-      // Use 'as const' to fix type inference for literal union types
       events: [{
         id: Math.random().toString(36).substring(7),
         type: 'registration' as const,
-        message: `Novo Inscrito: ${participant.name}`,
+        message: `Inscrito: ${participant.name}`,
         timestamp: Date.now()
       }, ...prev.events].slice(0, 100)
     }));
@@ -171,7 +226,7 @@ const App: React.FC = () => {
   };
 
   const handleResetTournament = () => {
-    if (!confirm(`⚠️ ATENÇÃO: Isso apagará TODOS os dados de ${selectedYear}. Deseja continuar?`)) return;
+    if (!confirm(`⚠️ APENÇÃO: Isso apagará TODOS os dados da temporada ${selectedYear}. Deseja continuar?`)) return;
     const resetData = { participants: [], entries: [], matches: [], currentRound: 1, youtubeLink: '', showLive: true, events: [] };
     setData(resetData);
     syncWithSupabase(resetData);
@@ -184,7 +239,6 @@ const App: React.FC = () => {
       currentRound: 1,
       matches: [],
       entries: prev.entries.map(e => ({ ...e, status: 'active' as const, currentRound: 1 })),
-      // Use 'as const' to fix type inference for literal union types
       events: [{
         id: Math.random().toString(36).substring(7),
         type: 'match-pending' as const,
@@ -205,13 +259,12 @@ const App: React.FC = () => {
       if (!match) return prev;
       const entry1 = prev.entries.find(e => e.number === match.entry1);
       const entry2 = prev.entries.find(e => e.number === match.entry2);
-      const logMsg = newStatus === 'in-progress' ? `Em Andamento: ${entry1?.participantName} vs ${entry2?.participantName}` :
-                     newStatus === 'pending' ? `Em Espera: ${entry1?.participantName} vs ${entry2?.participantName}` : 'Finalizado';
+      const logMsg = newStatus === 'in-progress' ? `Mesa: ${entry1?.participantName} vs ${entry2?.participantName}` :
+                     newStatus === 'pending' ? `Espera: ${entry1?.participantName} vs ${entry2?.participantName}` : 'Finalizado';
       
       return {
         ...prev,
         matches: prev.matches.map(m => m.id === matchId ? { ...m, status: newStatus } : m),
-        // Use 'as const' to fix type inference for literal union types
         events: [{ id: Math.random().toString(36).substring(7), type: 'match-progress' as const, message: logMsg, timestamp: Date.now() }, ...prev.events].slice(0, 100)
       };
     });
@@ -235,7 +288,6 @@ const App: React.FC = () => {
         ...prev,
         matches: nextMatches,
         entries: nextEntries,
-        // Use 'as const' to fix type inference for literal union types
         events: [{ id: Math.random().toString(36).substring(7), type: 'match-finished' as const, message: logMsg, timestamp: Date.now() }, ...prev.events].slice(0, 100)
       };
     });
@@ -245,8 +297,7 @@ const App: React.FC = () => {
      updateData(prev => ({
        ...prev,
        matches: [...prev.matches, m],
-       // Use 'as const' to fix type inference for literal union types
-       events: [{ id: Math.random().toString(36).substring(7), type: 'match-pending' as const, message: `Sorteado: Mesa #${m.timestamp.toString().slice(-3)}`, timestamp: Date.now() }, ...prev.events].slice(0, 100)
+       events: [{ id: Math.random().toString(36).substring(7), type: 'match-pending' as const, message: `Novo Confronto: Mesa #${m.timestamp.toString().slice(-3)}`, timestamp: Date.now() }, ...prev.events].slice(0, 100)
      }));
   };
 
@@ -262,22 +313,21 @@ const App: React.FC = () => {
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('visitor')}>
               <Trophy className="w-6 h-6 text-emerald-500" />
-              <h1 className="text-xl font-black bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">SINUCA LIVE</h1>
+              <h1 className="text-xl font-black bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent uppercase tracking-tighter">SINUCA LIVE</h1>
             </div>
 
-            {/* SELETOR DE ANO */}
             <div className="relative group">
               <button className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-black text-slate-300 hover:text-white transition-all">
                 <Calendar className="w-3.5 h-3.5 text-emerald-500" />
                 Ano: {selectedYear}
                 <ChevronDown className="w-3 h-3 text-slate-500" />
               </button>
-              <div className="absolute top-full left-0 mt-2 w-32 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100]">
+              <div className="absolute top-full left-0 mt-2 w-36 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100]">
                 {AVAILABLE_YEARS.map(year => (
                   <button 
                     key={year} 
                     onClick={() => setSelectedYear(year)}
-                    className={`w-full text-left px-4 py-2.5 text-xs font-bold first:rounded-t-xl last:rounded-b-xl hover:bg-emerald-600 hover:text-white transition-colors ${selectedYear === year ? 'text-emerald-400 bg-emerald-400/5' : 'text-slate-400'}`}
+                    className={`w-full text-left px-4 py-3 text-[10px] font-black uppercase first:rounded-t-xl last:rounded-b-xl hover:bg-emerald-600 hover:text-white transition-colors ${selectedYear === year ? 'text-emerald-400 bg-emerald-400/5' : 'text-slate-400'}`}
                   >
                     Temporada {year}
                   </button>
@@ -306,7 +356,7 @@ const App: React.FC = () => {
         {isLoading ? (
           <div className="py-40 flex flex-col items-center justify-center gap-4">
             <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Buscando Temporada {selectedYear}...</p>
+            <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Acessando Temporada {selectedYear}...</p>
           </div>
         ) : (
           <>
@@ -314,14 +364,14 @@ const App: React.FC = () => {
               <div className="max-w-md mx-auto mt-20 p-8 bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl">
                 <h2 className="text-2xl font-bold mb-6 text-center text-white">Administração</h2>
                 <form onSubmit={handleLogin} className="space-y-4">
-                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500 text-center" placeholder="Senha de acesso..." required />
+                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500 text-center" placeholder="Senha..." required />
                   <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 font-bold py-3 rounded-lg shadow-lg">Entrar</button>
                 </form>
               </div>
             )}
 
             {view === 'admin-participants' && (
-              <AdminParticipants participants={data.participants} entries={data.entries} youtubeLink={data.youtubeLink} showLive={data.showLive} onAddParticipant={handleRegisterParticipant} onRemoveParticipant={handleRemoveParticipant} onEditParticipant={handleEditParticipant} onUpdateYoutube={handleUpdateYoutube} onGenerateTestData={() => {}} onResetAll={handleResetTournament} />
+              <AdminParticipants participants={data.participants} entries={data.entries} youtubeLink={data.youtubeLink} showLive={data.showLive} onAddParticipant={handleRegisterParticipant} onRemoveParticipant={handleRemoveParticipant} onEditParticipant={handleEditParticipant} onUpdateYoutube={handleUpdateYoutube} onGenerateTestData={handleGenerateTestData} onResetAll={handleResetTournament} />
             )}
 
             {view === 'admin-matches' && (
@@ -329,13 +379,13 @@ const App: React.FC = () => {
             )}
 
             {view === 'admin-logs' && (
-              <div className="space-y-8">
+              <div className="space-y-8 animate-in fade-in duration-500">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-3xl font-black text-white flex items-center gap-3"><ClipboardList className="w-8 h-8 text-emerald-500" /> Log {selectedYear}</h2>
+                  <h2 className="text-3xl font-black text-white flex items-center gap-3"><ClipboardList className="w-8 h-8 text-emerald-500" /> Log de Eventos {selectedYear}</h2>
                   <button onClick={handleClearLogs} className="bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white px-4 py-2 rounded-lg text-sm font-bold border border-red-500/30 flex items-center gap-2"><Eraser className="w-4 h-4" /> Limpar Logs</button>
                 </div>
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl max-h-[600px] overflow-y-auto">
-                  {data.events.length === 0 ? <div className="p-20 text-center text-slate-500 italic">Sem eventos para este ano.</div> : data.events.map(event => (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl max-h-[600px] overflow-y-auto custom-scrollbar">
+                  {data.events.length === 0 ? <div className="p-20 text-center text-slate-500 italic">Nenhum evento para {selectedYear}.</div> : data.events.map(event => (
                     <div key={event.id} className="p-4 border-b border-slate-800 flex items-center gap-4 hover:bg-slate-800/50 transition-colors">
                       <div className={`p-2 rounded-lg ${event.type === 'registration' ? 'bg-blue-500/10 text-blue-500' : 'bg-emerald-500/10 text-emerald-500'}`}><Bell className="w-4 h-4" /></div>
                       <div><p className="font-bold text-slate-200">{event.message}</p><p className="text-[10px] text-slate-500 uppercase tracking-widest">{new Date(event.timestamp).toLocaleString()}</p></div>
